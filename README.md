@@ -251,5 +251,200 @@ File `public/style.css` berisi styling untuk tampilan web dengan layout dua kolo
 ### Halaman Term of Services (Autoroute)
 <img width="940" height="529" alt="image" src="https://github.com/user-attachments/assets/43027a2c-ca0d-46b2-a2d0-758d13720096" />
 
-
 ---
+
+
+# Praktikum 2: Framework Lanjutan (CRUD)
+Tujuan
+
+Mahasiswa mampu memahami konsep dasar Model
+Mahasiswa mampu memahami konsep dasar CRUD
+Mahasiswa mampu membuat program sederhana menggunakan Framework CodeIgniter 4
+
+
+# Langkah-Langkah Praktikum 2
+## 1. Membuat Database
+
+Buka phpMyAdmin, kemudian jalankan query berikut:
+```sqlCREATE DATABASE lab_ci4;
+sqlCREATE TABLE artikel (
+    id INT(11) auto_increment,
+    judul VARCHAR(200) NOT NULL,
+    isi TEXT,
+    gambar VARCHAR(200),
+    status TINYINT(1) DEFAULT 0,
+    slug VARCHAR(200),
+    PRIMARY KEY(id)
+);
+```
+
+<img width="940" height="504" alt="image" src="https://github.com/user-attachments/assets/0028b8f9-33c4-42aa-82ab-7ad56905e592" />
+
+## 2. Konfigurasi Database
+
+Buka file .env, kemudian ubah konfigurasi database:
+```database.default.hostname = localhost
+database.default.database = lab_ci4
+database.default.username = root
+database.default.password = 
+database.default.DBDriver = MySQLi
+database.default.DBPrefix =
+```
+
+<img width="687" height="371" alt="image" src="https://github.com/user-attachments/assets/2d75c07a-cabf-4287-b338-505856f4c37b" />
+
+## 4. Membuat Model
+
+Buat file ArtikelModel.php pada direktori app/Models/:
+```php<?php
+
+namespace App\Models;
+
+use CodeIgniter\Model;
+
+class ArtikelModel extends Model
+{
+    protected $table = 'artikel';
+    protected $primaryKey = 'id';
+    protected $useAutoIncrement = true;
+    protected $allowedFields = ['judul', 'isi', 'status', 'slug', 'gambar'];
+```
+
+## 4. Membuat Controller Artikel
+
+Buat file Artikel.php pada direktori app/Controllers/ dengan method:
+```index() → menampilkan daftar artikel
+view($slug) → menampilkan detail artikel
+admin_index() → halaman admin
+add() → tambah artikel
+edit($id) → edit artikel
+delete($id) → hapus artikel
+```
+```
+php<?php
+
+namespace App\Controllers;
+
+use App\Models\ArtikelModel;
+
+class Artikel extends BaseController
+{
+    public function index()
+    {
+        $title = 'Daftar Artikel';
+        $model = new ArtikelModel();
+        $artikel = $model->findAll();
+        return view('artikel/index', compact('artikel', 'title'));
+    }
+
+    public function view($slug)
+    {
+        $model = new ArtikelModel();
+        $artikel = $model->where(['slug' => $slug])->first();
+
+        if (!$artikel) {
+            throw \CodeIgniter\Exceptions\PageNotFoundException::forPageNotFound();
+        }
+
+        $title = $artikel['judul'];
+        return view('artikel/detail', compact('artikel', 'title'));
+    }
+
+    public function admin_index()
+    {
+        $title = 'Daftar Artikel';
+        $model = new ArtikelModel();
+        $artikel = $model->findAll();
+        return view('artikel/admin_index', compact('artikel', 'title'));
+    }
+
+    public function add()
+    {
+        $validation = \Config\Services::validation();
+        $validation->setRules(['judul' => 'required']);
+        $isDataValid = $validation->withRequest($this->request)->run();
+
+        if ($isDataValid) {
+            $artikel = new ArtikelModel();
+            $artikel->insert([
+                'judul' => $this->request->getPost('judul'),
+                'isi'   => $this->request->getPost('isi'),
+                'slug'  => url_title($this->request->getPost('judul')),
+            ]);
+            return redirect('admin/artikel');
+        }
+
+        $title = "Tambah Artikel";
+        return view('artikel/form_add', compact('title'));
+    }
+
+    public function edit($id)
+    {
+        $artikel = new ArtikelModel();
+        $validation = \Config\Services::validation();
+        $validation->setRules(['judul' => 'required']);
+        $isDataValid = $validation->withRequest($this->request)->run();
+
+        if ($isDataValid) {
+            $artikel->update($id, [
+                'judul' => $this->request->getPost('judul'),
+                'isi'   => $this->request->getPost('isi'),
+            ]);
+            return redirect('admin/artikel');
+        }
+
+        $data  = $artikel->where('id', $id)->first();
+        $title = "Edit Artikel";
+        return view('artikel/form_edit', compact('title', 'data'));
+    }
+
+    public function delete($id)
+    {
+        $artikel = new ArtikelModel();
+        $artikel->delete($id);
+        return redirect('admin/artikel');
+    }
+}
+```
+
+## 5. Membuat View Artikel
+
+Buat folder artikel di dalam app/Views/, kemudian buat file:
+```index.php → tampilan daftar artikel
+detail.php → tampilan detail artikel
+admin_index.php → tampilan admin
+form_add.php → form tambah artikel
+form_edit.php → form edit artikel
+```
+
+## 6. Menambahkan Data Artikel
+
+Tambahkan data dummy ke database melalui phpMyAdmin:
+```sqlINSERT INTO artikel (judul, isi, slug) VALUES
+('Artikel pertama', 'Lorem Ipsum adalah contoh teks...', 'artikel-pertama'),
+('Artikel kedua', 'Tidak seperti anggapan banyak orang...', 'artikel-kedua');
+```
+
+## 7. Membuat Route CRUD
+
+Tambahkan routing untuk menu admin pada Routes.php:
+```php$routes->group('admin', function($routes) {
+    $routes->get('artikel', 'Artikel::admin_index');
+    $routes->add('artikel/add', 'Artikel::add');
+    $routes->add('artikel/edit/(:any)', 'Artikel::edit/$1');
+    $routes->get('artikel/delete/(:any)', 'Artikel::delete/$1');
+});
+```
+
+# Hasil Praktikum 2
+
+<img width="602" height="323" alt="image" src="https://github.com/user-attachments/assets/01e9b911-fab1-4b24-9dbf-c904d77a38eb" />
+
+<img width="940" height="502" alt="image" src="https://github.com/user-attachments/assets/83e27ac0-433b-44d3-afd8-d5c50c2dc2af" />
+
+<img width="940" height="497" alt="image" src="https://github.com/user-attachments/assets/578ba7ce-7358-4203-b77d-038ea0be2e5f" />
+
+<img width="940" height="501" alt="image" src="https://github.com/user-attachments/assets/d880fd7f-0281-46ef-aad7-ca9bade5cbf7" />
+
+<img width="940" height="504" alt="image" src="https://github.com/user-attachments/assets/836b2bd6-3fa1-4eac-bffd-1a631e4f9d2b" />
+

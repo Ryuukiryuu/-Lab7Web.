@@ -448,3 +448,220 @@ Tambahkan routing untuk menu admin pada Routes.php:
 
 <img width="940" height="504" alt="image" src="https://github.com/user-attachments/assets/836b2bd6-3fa1-4eac-bffd-1a631e4f9d2b" />
 
+# Lab7Web - Praktikum 3: View Layout dan View Cell
+
+---
+
+## Langkah-Langkah Praktikum
+
+### 1. Membuat Layout Utama
+
+Buat folder `layout` di dalam `app/Views/`, kemudian buat file `main.php`:
+
+```php
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title><?= $title ?? 'My Website' ?></title>
+    <link rel="stylesheet" href="<?= base_url('/style.css');?>">
+</head>
+<body>
+    <div id="container">
+        <header>
+            <h1>Layout Sederhana</h1>
+        </header>
+        <nav>
+            <a href="<?= base_url('/');?>" class="active">Home</a>
+            <a href="<?= base_url('/artikel');?>">Artikel</a>
+            <a href="<?= base_url('/about');?>">About</a>
+            <a href="<?= base_url('/contact');?>">Kontak</a>
+        </nav>
+        <section id="wrapper">
+            <section id="main">
+                <?= $this->renderSection('content') ?>
+            </section>
+            <aside id="sidebar">
+                <?= view_cell('App\\Cells\\ArtikelTerkini::render') ?>
+                <div class="widget-box">
+                    <h3 class="title">Widget Header</h3>
+                    <ul>
+                        <li><a href="#">Widget Link</a></li>
+                        <li><a href="#">Widget Link</a></li>
+                    </ul>
+                </div>
+                <div class="widget-box">
+                    <h3 class="title">Widget Text</h3>
+                    <p>Vestibulum lorem elit, iaculis in nisl volutpat,
+                    malesuada tincidunt arcu. Proin in leo fringilla,
+                    vestibulum mi porta, faucibus felis.</p>
+                </div>
+            </aside>
+        </section>
+        <footer>
+            <p>&copy; 2021 - Universitas Pelita Bangsa</p>
+        </footer>
+    </div>
+</body>
+</html>
+```
+
+---
+
+### 2. Modifikasi File View
+
+Ubah semua file view agar menggunakan layout baru dengan `extend` dan `section`.
+
+**Contoh `app/Views/about.php`:**
+
+```php
+<?= $this->extend('layout/main') ?>
+
+<?= $this->section('content') ?>
+<h1><?= $title; ?></h1>
+<hr>
+<p><?= $content; ?></p>
+<?= $this->endSection() ?>
+```
+
+Hal yang sama dilakukan untuk `contact.php`, `faqs.php`, dan `artikel/index.php`.
+
+---
+
+### 3. Menambahkan Kolom `created_at` pada Database
+
+Jalankan query berikut di phpMyAdmin untuk menambahkan kolom tanggal:
+
+```sql
+ALTER TABLE artikel ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP;
+```
+
+---
+
+### 4. Membuat Class View Cell
+
+Buat folder `Cells` di dalam `app/`, kemudian buat file `ArtikelTerkini.php`:
+
+```php
+<?php
+
+namespace App\Cells;
+
+use CodeIgniter\View\Cells\Cell;
+use App\Models\ArtikelModel;
+
+class ArtikelTerkini extends Cell
+{
+    public function render(string $library = '', array $params = [], int $ttl = 0, string $cacheName = null): string
+    {
+        $model = new ArtikelModel();
+        $artikel = $model->orderBy('created_at', 'DESC')->limit(5)->findAll();
+        return view('components/artikel_terkini', ['artikel' => $artikel]);
+    }
+}
+```
+
+---
+
+### 5. Membuat View untuk View Cell
+
+Buat folder `components` di dalam `app/Views/`, kemudian buat file `artikel_terkini.php`:
+
+```php
+<div class="widget-box">
+    <h3 class="title">Artikel Terkini</h3>
+    <ul>
+        <?php foreach ($artikel as $row): ?>
+        <li><a href="<?= base_url('/artikel/' . $row['slug']) ?>"><?= $row['judul'] ?></a></li>
+        <?php endforeach; ?>
+    </ul>
+</div>
+```
+
+---
+
+### 6. Struktur Folder Akhir
+
+```
+app/
+├── Cells/
+│   └── ArtikelTerkini.php
+└── Views/
+    ├── layout/
+    │   └── main.php
+    ├── components/
+    │   └── artikel_terkini.php
+    ├── artikel/
+    │   ├── index.php
+    │   └── detail.php
+    ├── about.php
+    ├── contact.php
+    └── faqs.php
+```
+
+---
+
+## Hasil Praktikum
+
+### Halaman Artikel dengan Layout Baru
+<img width="1366" height="768" alt="image" src="https://github.com/user-attachments/assets/c9970d15-699a-441f-8ed5-37b168f532f8" />
+
+
+### Halaman About dengan Layout Baru
+<img width="1366" height="768" alt="image" src="https://github.com/user-attachments/assets/d317559f-3024-4ede-8cdb-d754127f0371" />
+
+
+### Sidebar dengan View Cell Artikel Terkini
+<img width="278" height="143" alt="image" src="https://github.com/user-attachments/assets/88991b23-8d82-4221-b685-3d7d0be4c6e9" />
+
+
+---
+
+## Pertanyaan dan Jawaban
+
+### 1. Apa manfaat utama dari penggunaan View Layout dalam pengembangan aplikasi?
+
+View Layout memungkinkan developer untuk membuat **satu template utama** yang digunakan bersama oleh banyak halaman. Manfaatnya antara lain:
+- **Konsistensi tampilan** — header, footer, dan navigasi selalu sama di semua halaman
+- **Efisiensi kode** — tidak perlu menulis ulang struktur HTML di setiap halaman
+- **Mudah diupdate** — cukup ubah satu file layout, semua halaman ikut berubah
+- **Lebih terstruktur** — pemisahan antara layout dan konten lebih jelas
+
+### 2. Jelaskan perbedaan antara View Cell dan View biasa
+
+| | View Biasa | View Cell |
+|---|---|---|
+| **Cara panggil** | `return view('nama_view')` dari Controller | `view_cell('Cells\NamaClass::method')` dari View |
+| **Logika data** | Data disiapkan di Controller | Data disiapkan di dalam Class Cell sendiri |
+| **Reusability** | Harus dipanggil ulang dari setiap Controller | Bisa dipanggil langsung dari View manapun |
+| **Kegunaan** | Halaman utama | Komponen kecil seperti sidebar, widget |
+
+### 3. Ubah View Cell agar hanya menampilkan post dengan kategori tertentu
+
+Tambahkan parameter kategori pada method `render()` di `ArtikelTerkini.php`:
+
+```php
+<?php
+
+namespace App\Cells;
+
+use CodeIgniter\View\Cells\Cell;
+use App\Models\ArtikelModel;
+
+class ArtikelTerkini extends Cell
+{
+    public function render(string $library = '', array $params = [], int $ttl = 0, string $cacheName = null): string
+    {
+        $model = new ArtikelModel();
+        $artikel = $model->where('status', 1)
+                         ->orderBy('created_at', 'DESC')
+                         ->limit(5)
+                         ->findAll();
+        return view('components/artikel_terkini', ['artikel' => $artikel]);
+    }
+}
+```
+
+Dengan menambahkan `->where('status', 1)`, View Cell hanya akan menampilkan artikel yang sudah dipublish (status = 1).
+
+---

@@ -665,3 +665,389 @@ class ArtikelTerkini extends Cell
 Dengan menambahkan `->where('status', 1)`, View Cell hanya akan menampilkan artikel yang sudah dipublish (status = 1).
 
 ---
+
+# Lab7Web - Praktikum 4: Framework Lanjutan (Modul Login)
+
+---
+
+## Langkah-Langkah Praktikum
+
+### 1. Membuat Tabel User
+Buka phpMyAdmin, kemudian jalankan query berikut pada database `lab_ci4`:
+
+```sql
+CREATE TABLE user (
+    id INT(11) auto_increment,
+    username VARCHAR(200) NOT NULL,
+    useremail VARCHAR(200),
+    userpassword VARCHAR(200),
+    PRIMARY KEY(id)
+);
+```
+
+<img width="1366" height="768" alt="image" src="https://github.com/user-attachments/assets/a99b7a8f-1f42-45b1-b1dd-a866f315b895" />
+
+---
+
+### 2. Membuat Model User
+Buat file `UserModel.php` pada direktori `app/Models/`:
+
+```php
+<?php
+
+namespace App\Models;
+
+use CodeIgniter\Model;
+
+class UserModel extends Model
+{
+    protected $table = 'user';
+    protected $primaryKey = 'id';
+    protected $useAutoIncrement = true;
+    protected $allowedFields = ['username', 'useremail', 'userpassword'];
+}
+```
+
+---
+
+### 3. Membuat Controller User
+Buat file `User.php` pada direktori `app/Controllers/` dengan method:
+- `index()` → menampilkan daftar user
+- `login()` → proses login
+- `logout()` → proses logout
+
+```php
+<?php
+
+namespace App\Controllers;
+
+use App\Models\UserModel;
+
+class User extends BaseController
+{
+    public function index()
+    {
+        $title = 'Daftar User';
+        $model = new UserModel();
+        $users = $model->findAll();
+        return view('user/index', compact('users', 'title'));
+    }
+
+    public function login()
+    {
+        helper(['form']);
+        $email    = $this->request->getPost('email');
+        $password = $this->request->getPost('password');
+
+        if (!$email) {
+            return view('user/login');
+        }
+
+        $session = session();
+        $model   = new UserModel();
+        $login   = $model->where('useremail', $email)->first();
+
+        if ($login) {
+            $pass = $login['userpassword'];
+            if (password_verify($password, $pass)) {
+                $login_data = [
+                    'user_id'    => $login['id'],
+                    'user_name'  => $login['username'],
+                    'user_email' => $login['useremail'],
+                    'logged_in'  => TRUE,
+                ];
+                $session->set($login_data);
+                return redirect('admin/artikel');
+            } else {
+                $session->setFlashdata("flash_msg", "Password salah.");
+                return redirect()->to('/user/login');
+            }
+        } else {
+            $session->setFlashdata("flash_msg", "Email tidak terdaftar.");
+            return redirect()->to('/user/login');
+        }
+    }
+
+    public function logout()
+    {
+        session()->destroy();
+        return redirect()->to('/user/login');
+    }
+}
+```
+
+---
+
+### 4. Membuat View Login
+Buat folder `user` di dalam `app/Views/`, kemudian buat file `login.php` dengan tampilan profesional tema biru.
+
+```
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login</title>
+    <link rel="stylesheet" href="<?= base_url('/style.css');?>">
+    <style>
+        body {
+            background-color: #f0f2f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+
+        #login-wrapper {
+            background-color: #fff;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 400px;
+        }
+
+        #login-wrapper h1 {
+            font-size: 26px;
+            color: #1a1a2e;
+            margin-bottom: 8px;
+            text-align: center;
+        }
+
+        #login-wrapper p.subtitle {
+            text-align: center;
+            color: #888;
+            font-size: 13px;
+            margin-bottom: 25px;
+        }
+
+        #login-wrapper label {
+            display: block;
+            font-size: 13px;
+            font-weight: bold;
+            color: #444;
+            margin-bottom: 5px;
+        }
+
+        #login-wrapper input[type="email"],
+        #login-wrapper input[type="password"] {
+            width: 100%;
+            padding: 10px 14px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+            margin-bottom: 18px;
+            box-sizing: border-box;
+            transition: border 0.3s;
+        }
+
+        #login-wrapper input:focus {
+            border-color: #e94560;
+            outline: none;
+        }
+
+        #login-wrapper button {
+            width: 100%;
+            padding: 11px;
+            background-color: #e94560;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 15px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        #login-wrapper button:hover {
+            background-color: #c73652;
+        }
+
+        .alert {
+            padding: 10px 14px;
+            border-radius: 5px;
+            margin-bottom: 18px;
+            font-size: 13px;
+        }
+
+        .alert-danger {
+            background-color: #ffe0e6;
+            color: #c0392b;
+            border: 1px solid #f5c6cb;
+        }
+
+        .divider {
+            text-align: center;
+            color: #aaa;
+            font-size: 12px;
+            margin: 20px 0 10px;
+        }
+    </style>
+</head>
+<body>
+    <div id="login-wrapper">
+        <h1>🔐 Sign In</h1>
+        <p class="subtitle">Masuk ke Admin Portal Berita</p>
+        
+        <?php if(session()->getFlashdata('flash_msg')):?>
+        <div class="alert alert-danger">
+            ⚠️ <?= session()->getFlashdata('flash_msg') ?>
+        </div>
+        <?php endif;?>
+
+        <form action="" method="post">
+            <label for="InputForEmail">Email Address</label>
+            <input type="email" name="email" id="InputForEmail"
+                placeholder="contoh@email.com"
+                value="<?= set_value('email') ?>">
+
+            <label for="InputForPassword">Password</label>
+            <input type="password" name="password"
+                id="InputForPassword"
+                placeholder="Masukkan password">
+
+            <button type="submit">Login</button>
+        </form>
+
+        <p class="divider">© 2021 - Universitas Pelita Bangsa</p>
+    </div>
+</body>
+</html>
+
+<img width="1366" height="768" alt="image" src="https://github.com/user-attachments/assets/b581538d-a282-44ab-93e3-e95930eb2662" />
+
+```
+
+---
+
+### 5. Membuat Database Seeder
+Jalankan perintah berikut di XAMPP Shell untuk membuat seeder:
+
+```bash
+php spark make:seeder UserSeeder
+```
+
+Buka file `app/Database/Seeds/UserSeeder.php` dan isi dengan:
+
+```php
+<?php
+
+namespace App\Database\Seeds;
+
+use CodeIgniter\Database\Seeder;
+
+class UserSeeder extends Seeder
+{
+    public function run()
+    {
+        $model = model('UserModel');
+        $model->insert([
+            'username'     => 'admin',
+            'useremail'    => 'admin@email.com',
+            'userpassword' => password_hash('admin123', PASSWORD_DEFAULT),
+        ]);
+    }
+}
+```
+
+Jalankan seeder:
+```bash
+php spark db:seed UserSeeder
+```
+
+---
+
+### 6. Membuat Auth Filter
+Buat file `Auth.php` pada direktori `app/Filters/`:
+
+```php
+<?php
+
+namespace App\Filters;
+
+use CodeIgniter\HTTP\RequestInterface;
+use CodeIgniter\HTTP\ResponseInterface;
+use CodeIgniter\Filters\FilterInterface;
+
+class Auth implements FilterInterface
+{
+    public function before(RequestInterface $request, $arguments = null)
+    {
+        if (!session()->get('logged_in')) {
+            return redirect()->to('/user/login');
+        }
+    }
+
+    public function after(RequestInterface $request, ResponseInterface $response, $arguments = null)
+    {
+        // Do something here
+    }
+}
+```
+
+---
+
+### 7. Konfigurasi Filters
+Buka file `app/Config/Filters.php`, tambahkan `auth` pada bagian `$aliases`:
+
+```php
+public array $aliases = [
+    'csrf'          => CSRF::class,
+    'toolbar'       => DebugToolbar::class,
+    'honeypot'      => Honeypot::class,
+    'invalidchars'  => InvalidChars::class,
+    'secureheaders' => SecureHeaders::class,
+    'cors'          => Cors::class,
+    'forcehttps'    => ForceHTTPS::class,
+    'pagecache'     => PageCache::class,
+    'performance'   => PerformanceMetrics::class,
+    'auth'          => \App\Filters\Auth::class,
+];
+```
+
+---
+
+### 8. Update Routes
+Buka file `app/Config/Routes.php` dan tambahkan filter auth pada group admin:
+
+```php
+// Login & Logout
+$routes->get('/user/login', 'User::login');
+$routes->post('/user/login', 'User::login');
+$routes->get('/user/logout', 'User::logout');
+
+// Admin dengan filter auth
+$routes->group('admin', ['filter' => 'auth'], function($routes) {
+    $routes->get('artikel', 'Artikel::admin_index');
+    $routes->add('artikel/add', 'Artikel::add');
+    $routes->add('artikel/edit/(:any)', 'Artikel::edit/$1');
+    $routes->get('artikel/delete/(:any)', 'Artikel::delete/$1');
+});
+```
+
+---
+
+### 9. Percobaan Akses Menu Admin
+Ketika mengakses `localhost:8080/admin/artikel` tanpa login, akan diarahkan ke halaman login secara otomatis.
+
+<img width="1366" height="768" alt="image" src="https://github.com/user-attachments/assets/54c085a5-8f7f-45da-815d-459a158f7208" />
+
+---
+
+### 10. Hasil Login Berhasil
+Setelah login dengan:
+- **Email:** admin@email.com
+- **Password:** admin123
+
+Akan diarahkan ke halaman Admin Portal Berita.
+
+<img width="1366" height="768" alt="image" src="https://github.com/user-attachments/assets/51fbfd0d-3afa-4088-98b2-51b7b5ae7737" />
+
+---
+
+### 11. Fungsi Logout
+Tombol logout tersedia di header admin. Setelah logout, session dihapus dan diarahkan kembali ke halaman login.
+
+---
+

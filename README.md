@@ -1051,3 +1051,126 @@ Tombol logout tersedia di header admin. Setelah logout, session dihapus dan diar
 
 ---
 
+Berikut versi yang sudah **rapi, clean, dan siap di-paste ke README GitHub (Markdown)**:
+
+---
+
+#  Lab7Web - Praktikum 5: Pagination dan Pencarian
+
+Praktikum ini bertujuan untuk memahami konsep dasar serta implementasi fitur:
+
+* **Pagination** (pembatasan tampilan data)
+* **Pencarian** (filter data)
+
+Menggunakan framework **CodeIgniter 4**.
+
+---
+
+##  Langkah-Langkah Praktikum
+
+### 1. Membuat Pagination
+
+Pagination digunakan untuk membagi data dalam jumlah besar menjadi beberapa halaman agar performa aplikasi tetap optimal.
+
+Buka file **`Artikel.php` (Controller)**, lalu modifikasi method `admin_index()`:
+
+```php
+public function admin_index()
+{
+    $title = 'Daftar Artikel';
+    $model = new ArtikelModel();
+
+    $data = [
+        'title'   => $title,
+        'artikel' => $model->paginate(10), // 10 data per halaman
+        'pager'   => $model->pager,        // Object pagination
+    ];
+
+    return view('artikel/admin_index', $data);
+}
+```
+
+---
+
+### 2. Menampilkan Pagination pada View
+
+Tambahkan kode berikut di file:
+
+ `app/Views/artikel/admin_index.php`
+(tepat di bawah tabel data)
+
+```php
+<?= $pager->links(); ?>
+```
+
+####  Hasil Pagination:
+
+```md
+![Screenshot Pagination](GANTI_DENGAN_URL_SCREENSHOT_LO)
+```
+
+---
+
+### 3. Membuat Fitur Pencarian
+
+Fitur ini memungkinkan admin mencari artikel berdasarkan judul.
+
+Update method `admin_index()` pada Controller:
+
+```php
+public function admin_index()
+{
+    $title = 'Daftar Artikel';
+    $q = $this->request->getVar('q') ?? ''; // Ambil query pencarian
+
+    $model = new ArtikelModel();
+
+    $data = [
+        'title'   => $title,
+        'q'       => $q,
+        'artikel' => $model->like('judul', $q)->paginate(10), // Filter judul
+        'pager'   => $model->pager,
+    ];
+
+    return view('artikel/admin_index', $data);
+}
+```
+
+---
+
+### 4. Menambahkan Form Pencarian pada View
+
+Tambahkan form berikut di atas tabel data:
+
+```html
+<form method="get" class="form-search">
+    <input type="text" name="q" value="<?= $q; ?>" placeholder="Cari data">
+    <input type="submit" value="Cari" class="btn btn-primary">
+</form>
+```
+
+---
+
+### 5. Update Link Pagination agar Mendukung Pencarian
+
+Agar keyword tetap tersimpan saat pindah halaman:
+
+```php
+<?= $pager->only(['q'])->links(); ?>
+```
+
+---
+
+### 6. Hasil Akhir (Pencarian Data)
+
+Setelah fitur pencarian ditambahkan:
+
+* Admin dapat memasukkan kata kunci
+* Data artikel akan difilter berdasarkan judul
+* Pagination tetap berjalan dengan query pencarian
+
+<img width="1366" height="768" alt="image" src="https://github.com/user-attachments/assets/15e6cb3d-1759-4c6c-a420-7a41bcc26c47" />
+
+<img width="1366" height="768" alt="image" src="https://github.com/user-attachments/assets/de4a90e2-f8db-4731-a6ed-ac147ccfea99" />
+
+---

@@ -1424,14 +1424,9 @@ Setelah semua langkah selesai, sistem berhasil menampilkan:
 
 ### Halaman Admin Artikel
 
-```md
 <img width="1366" height="768" alt="image" src="https://github.com/user-attachments/assets/35e09a84-af83-406a-ba15-4a50a6556220" />
 
-```
 
-### Form Tambah Artikel
-
-```md
 <img width="1366" height="768" alt="image" src="https://github.com/user-attachments/assets/ad40a841-94d0-4bfd-a982-e6f6c8a76abc" />
 
 ```

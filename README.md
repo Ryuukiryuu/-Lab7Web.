@@ -1174,3 +1174,274 @@ Setelah fitur pencarian ditambahkan:
 <img width="1366" height="768" alt="image" src="https://github.com/user-attachments/assets/de4a90e2-f8db-4731-a6ed-ac147ccfea99" />
 
 ---
+
+````md
+# Lab7Web - Praktikum 6: Relasi Tabel dan Query Builder
+
+Praktikum ini merupakan lanjutan dari praktikum sebelumnya. Pada praktikum ini dilakukan pengembangan aplikasi **CodeIgniter 4** dengan menambahkan **relasi antar tabel**, **Query Builder**, serta **JOIN tabel** untuk menampilkan data artikel beserta kategorinya.
+
+## Tujuan Praktikum
+
+- Memahami konsep relasi antar tabel dalam database.
+- Mengimplementasikan relasi **One-to-Many**.
+- Menggunakan **Query Builder** pada CodeIgniter 4.
+- Menampilkan data dari tabel yang saling berelasi.
+
+---
+
+# Langkah-Langkah Praktikum
+
+## 1. Membuat Tabel Kategori
+
+Buat tabel baru bernama `kategori` untuk menyimpan data kategori artikel.
+
+```sql
+CREATE TABLE kategori (
+    id_kategori INT(11) AUTO_INCREMENT,
+    nama_kategori VARCHAR(100) NOT NULL,
+    slug_kategori VARCHAR(100),
+    PRIMARY KEY (id_kategori)
+);
+````
+
+### Struktur Tabel:
+
+| Field         | Type         | Keterangan                  |
+| ------------- | ------------ | --------------------------- |
+| id_kategori   | INT(11)      | Primary Key, Auto Increment |
+| nama_kategori | VARCHAR(100) | Nama kategori               |
+| slug_kategori | VARCHAR(100) | Slug kategori               |
+
+---
+
+## 2. Menambahkan Foreign Key pada Tabel Artikel
+
+Agar tabel `artikel` terhubung dengan tabel `kategori`, tambahkan field `id_kategori`.
+
+```sql
+ALTER TABLE artikel
+ADD COLUMN id_kategori INT(11),
+ADD CONSTRAINT fk_kategori_artikel
+FOREIGN KEY (id_kategori) REFERENCES kategori(id_kategori);
+```
+
+---
+
+## 3. Membuat Model Kategori
+
+Buat file baru:
+
+`app/Models/KategoriModel.php`
+
+```php
+<?php
+
+namespace App\Models;
+
+use CodeIgniter\Model;
+
+class KategoriModel extends Model
+{
+    protected $table = 'kategori';
+    protected $primaryKey = 'id_kategori';
+    protected $useAutoIncrement = true;
+    protected $allowedFields = ['nama_kategori', 'slug_kategori'];
+}
+```
+
+---
+
+## 4. Memodifikasi ArtikelModel
+
+Edit file:
+
+`app/Models/ArtikelModel.php`
+
+Tambahkan relasi JOIN antara artikel dan kategori.
+
+```php
+public function getArtikelDenganKategori()
+{
+    return $this->db->table('artikel')
+        ->select('artikel.*, kategori.nama_kategori')
+        ->join('kategori', 'kategori.id_kategori = artikel.id_kategori')
+        ->get()
+        ->getResultArray();
+}
+```
+
+---
+
+## 5. Memodifikasi Controller Artikel
+
+Edit file:
+
+`app/Controllers/Artikel.php`
+
+Tambahkan pemanggilan model kategori dan filter pencarian.
+
+```php
+use App\Models\ArtikelModel;
+use App\Models\KategoriModel;
+```
+
+Pada method `admin_index()`:
+
+```php
+$q = $this->request->getVar('q') ?? '';
+$kategori_id = $this->request->getVar('kategori_id') ?? '';
+```
+
+Gunakan Query Builder:
+
+```php
+$builder = $model->table('artikel')
+    ->select('artikel.*, kategori.nama_kategori')
+    ->join('kategori', 'kategori.id_kategori = artikel.id_kategori');
+```
+
+Filter pencarian:
+
+```php
+if ($q != '') {
+    $builder->like('artikel.judul', $q);
+}
+
+if ($kategori_id != '') {
+    $builder->where('artikel.id_kategori', $kategori_id);
+}
+```
+
+Pagination:
+
+```php
+$data['artikel'] = $builder->paginate(10);
+$data['pager'] = $model->pager;
+```
+
+---
+
+## 6. Memodifikasi View Frontend
+
+Edit file:
+
+`app/Views/artikel/index.php`
+
+Tambahkan kategori pada daftar artikel.
+
+```php
+<p>Kategori: <?= $row['nama_kategori']; ?></p>
+```
+
+---
+
+## 7. Memodifikasi View Admin
+
+Edit file:
+
+`app/Views/artikel/admin_index.php`
+
+Tambahkan form pencarian dan filter kategori.
+
+```php
+<form method="get">
+    <input type="text" name="q" placeholder="Cari Judul">
+    
+    <select name="kategori_id">
+        <option value="">Semua Kategori</option>
+    </select>
+
+    <button type="submit">Cari</button>
+</form>
+```
+
+Tambahkan kolom kategori pada tabel:
+
+```php
+<th>Kategori</th>
+```
+
+Pagination:
+
+```php
+<?= $pager->only(['q', 'kategori_id'])->links(); ?>
+```
+
+---
+
+## 8. Form Tambah Artikel
+
+Edit file:
+
+`app/Views/artikel/form_add.php`
+
+Tambahkan dropdown kategori.
+
+```php
+<select name="id_kategori">
+<?php foreach($kategori as $k): ?>
+<option value="<?= $k['id_kategori']; ?>">
+<?= $k['nama_kategori']; ?>
+</option>
+<?php endforeach; ?>
+</select>
+```
+
+---
+
+## 9. Form Edit Artikel
+
+Edit file:
+
+`app/Views/artikel/form_edit.php`
+
+Tambahkan kategori yang dipilih otomatis.
+
+```php
+<option value="<?= $k['id_kategori']; ?>"
+<?= ($artikel['id_kategori']==$k['id_kategori']) ? 'selected' : ''; ?>>
+<?= $k['nama_kategori']; ?>
+</option>
+```
+
+---
+
+# Hasil Praktikum
+
+Setelah semua langkah selesai, sistem berhasil menampilkan:
+
+* Artikel beserta nama kategori
+* Tambah artikel dengan kategori
+* Edit kategori artikel
+* Hapus artikel
+* Filter artikel berdasarkan kategori
+* Pencarian artikel
+* Pagination tetap berjalan
+
+---
+
+## Screenshot Hasil
+
+### Halaman Admin Artikel
+
+```md
+<img width="1366" height="768" alt="image" src="https://github.com/user-attachments/assets/35e09a84-af83-406a-ba15-4a50a6556220" />
+
+```
+
+### Form Tambah Artikel
+
+```md
+<img width="1366" height="768" alt="image" src="https://github.com/user-attachments/assets/ad40a841-94d0-4bfd-a982-e6f6c8a76abc" />
+
+```
+
+---
+
+# Kesimpulan
+
+Pada Praktikum 6 ini berhasil diterapkan konsep **relasi tabel One-to-Many** antara tabel `artikel` dan `kategori`. Selain itu, penggunaan **Query Builder CodeIgniter 4** mempermudah proses JOIN, pencarian data, filter kategori, dan pagination sehingga aplikasi menjadi lebih terstruktur dan dinamis.
+
+---
+
+

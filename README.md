@@ -1685,5 +1685,3 @@ Setelah semua langkah selesai, sistem berhasil menampilkan:
 hanya contoh gambar saja yang saya masukan
 
 ```
-
----

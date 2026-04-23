@@ -1432,3 +1432,262 @@ Setelah semua langkah selesai, sistem berhasil menampilkan:
 ```
 
 ---
+
+# Lab7Web - Praktikum 7: Upload File Gambar
+
+Praktikum ini merupakan lanjutan dari praktikum sebelumnya. Pada praktikum ini dilakukan pengembangan fitur **upload gambar** pada aplikasi **CodeIgniter 4**, khususnya pada fungsionalitas tambah dan edit artikel di panel admin.
+
+## Tujuan Praktikum
+
+- Memahami konsep dasar File Upload pada web.
+- Mengimplementasikan fitur upload gambar menggunakan Framework CodeIgniter 4.
+- Menerapkan validasi file upload (tipe, ukuran).
+- Menampilkan gambar yang telah diunggah pada halaman artikel.
+
+---
+
+# Langkah-Langkah Praktikum
+
+## 1. Membuat Folder Penyimpanan Gambar
+
+Buat folder `gambar` di dalam direktori `public/` sebagai lokasi penyimpanan file gambar yang diunggah.
+
+```bash
+mkdir -p public/gambar
+```
+
+Pastikan folder tersebut memiliki permission yang cukup agar dapat ditulis oleh server.
+
+---
+
+## 2. Memodifikasi Controller Artikel — Method `add()`
+
+Edit file:
+
+`app/Controllers/Artikel.php`
+
+Tambahkan logika upload file pada method `add()`. File gambar divalidasi sebelum dipindahkan ke folder tujuan, dan nama file digenerate secara acak menggunakan `getRandomName()` untuk menghindari konflik nama.
+
+```php
+public function add()
+{
+    $validation = \Config\Services::validation();
+    $validation->setRules([
+        'judul'  => 'required',
+        'gambar' => [
+            'label' => 'Gambar',
+            'rules' => 'uploaded[gambar]|is_image[gambar]|mime_in[gambar,image/jpg,image/jpeg,image/png,image/gif,image/webp]|max_size[gambar,2048]',
+        ],
+    ]);
+
+    $isDataValid = $validation->withRequest($this->request)->run();
+
+    if ($isDataValid) {
+        $file     = $this->request->getFile('gambar');
+        $namaFile = $file->getRandomName();
+        $file->move(ROOTPATH . 'public/gambar', $namaFile);
+
+        $artikel = new ArtikelModel();
+        $artikel->insert([
+            'judul'  => $this->request->getPost('judul'),
+            'isi'    => $this->request->getPost('isi'),
+            'slug'   => url_title($this->request->getPost('judul')),
+            'gambar' => $namaFile,
+        ]);
+        return redirect('admin/artikel');
+    }
+
+    $title  = "Tambah Artikel";
+    $errors = $validation->getErrors();
+    return view('artikel/form_add', compact('title', 'errors'));
+}
+```
+
+---
+
+## 3. Memodifikasi Controller Artikel — Method `edit()`
+
+Pada method `edit()`, upload gambar bersifat **opsional**. Jika user tidak memilih file baru, gambar lama tetap dipertahankan. Jika user mengunggah gambar baru, file lama akan dihapus otomatis dari server.
+
+```php
+public function edit($id)
+{
+    $artikelModel = new ArtikelModel();
+    $dataArtikel  = $artikelModel->where('id', $id)->first();
+
+    $validation = \Config\Services::validation();
+    $rules = ['judul' => 'required'];
+
+    $file = $this->request->getFile('gambar');
+    if ($file && $file->isValid() && !$file->hasMoved()) {
+        $rules['gambar'] = 'is_image[gambar]|mime_in[gambar,image/jpg,image/jpeg,image/png,image/gif,image/webp]|max_size[gambar,2048]';
+    }
+
+    $validation->setRules($rules);
+    $isDataValid = $validation->withRequest($this->request)->run();
+
+    if ($isDataValid) {
+        $updateData = [
+            'judul' => $this->request->getPost('judul'),
+            'isi'   => $this->request->getPost('isi'),
+        ];
+
+        if ($file && $file->isValid() && !$file->hasMoved()) {
+            if (!empty($dataArtikel['gambar'])) {
+                $oldFile = ROOTPATH . 'public/gambar/' . $dataArtikel['gambar'];
+                if (file_exists($oldFile)) unlink($oldFile);
+            }
+            $namaFile             = $file->getRandomName();
+            $file->move(ROOTPATH . 'public/gambar', $namaFile);
+            $updateData['gambar'] = $namaFile;
+        }
+
+        $artikelModel->update($id, $updateData);
+        return redirect('admin/artikel');
+    }
+
+    $data   = $dataArtikel;
+    $title  = "Edit Artikel";
+    $errors = $validation->getErrors();
+    return view('artikel/form_edit', compact('title', 'data', 'errors'));
+}
+```
+
+---
+
+## 4. Memodifikasi Controller Artikel — Method `delete()`
+
+Saat artikel dihapus, file gambar terkait juga dihapus otomatis dari folder `public/gambar/`.
+
+```php
+public function delete($id)
+{
+    $artikelModel = new ArtikelModel();
+    $dataArtikel  = $artikelModel->where('id', $id)->first();
+
+    if (!empty($dataArtikel['gambar'])) {
+        $filePath = ROOTPATH . 'public/gambar/' . $dataArtikel['gambar'];
+        if (file_exists($filePath)) unlink($filePath);
+    }
+
+    $artikelModel->delete($id);
+    return redirect('admin/artikel');
+}
+```
+
+---
+
+## 5. Memodifikasi View Form Tambah Artikel
+
+Edit file:
+
+`app/Views/artikel/form_add.php`
+
+Tambahkan field input file dan ubah atribut `enctype` pada tag `<form>` menjadi `multipart/form-data` agar form dapat mengirimkan data berupa file.
+
+```php
+<form action="" method="post" enctype="multipart/form-data">
+    ...
+    <div class="form-group">
+        <label>Gambar Artikel</label>
+        <input type="file" name="gambar" accept="image/*">
+        <small>Format: JPG, JPEG, PNG, GIF, WEBP. Maks. 2MB.</small>
+    </div>
+    ...
+</form>
+```
+
+> **Penting:** Tag `<form>` wajib ditambahkan atribut `enctype="multipart/form-data"`. Tanpa atribut ini, file tidak akan terkirim ke server.
+
+---
+
+## 6. Memodifikasi View Form Edit Artikel
+
+Edit file:
+
+`app/Views/artikel/form_edit.php`
+
+Tambahkan preview gambar saat ini dan field input file untuk mengganti gambar.
+
+```php
+<form action="" method="post" enctype="multipart/form-data">
+    ...
+    <div class="form-group">
+        <label>Gambar Artikel</label>
+        <?php if (!empty($data['gambar'])): ?>
+            <div>
+                <img src="<?= base_url('gambar/' . $data['gambar']); ?>"
+                     style="max-width:200px; max-height:150px; object-fit:cover;">
+                <p>Gambar saat ini: <strong><?= esc($data['gambar']) ?></strong></p>
+            </div>
+        <?php endif; ?>
+        <input type="file" name="gambar" accept="image/*">
+        <small>Kosongkan jika tidak ingin mengganti gambar.</small>
+    </div>
+    ...
+</form>
+```
+
+---
+
+## 7. Struktur Folder Hasil
+
+```
+lab7_php_ci/
+├── app/
+│   ├── Controllers/
+│   │   └── Artikel.php       ← method add, edit, delete dimodifikasi
+│   ├── Models/
+│   │   ├── ArtikelModel.php
+│   │   └── KategoriModel.php
+│   └── Views/
+│       └── artikel/
+│           ├── form_add.php  ← ditambah input file + enctype
+│           └── form_edit.php ← ditambah preview + input file + enctype
+└── public/
+    └── gambar/               ← folder penyimpanan gambar (buat manual)
+```
+
+---
+
+# Hasil Praktikum
+
+Setelah semua langkah selesai, sistem berhasil menampilkan:
+
+- Form tambah artikel dengan input upload gambar
+- Validasi file: hanya menerima format gambar, maksimal 2MB
+- Gambar tersimpan di folder `public/gambar/` dengan nama unik
+- Form edit artikel menampilkan preview gambar saat ini
+- Gambar lama otomatis terhapus saat diganti atau artikel dihapus
+
+---
+
+## Screenshot Hasil
+
+### Form Tambah Artikel (dengan Input Gambar)
+
+<img width="1366" height="768" alt="image" src="https://github.com/user-attachments/assets/f36804d6-b947-4c23-bf2c-ff2f6d4028b5" />
+
+```
+
+### Form Edit Artikel (dengan Preview Gambar)
+
+```
+<img width="1366" height="768" alt="image" src="https://github.com/user-attachments/assets/22135d3a-5c74-4f1b-a840-0aadb4116896" />
+
+```
+
+### Halaman Admin — Artikel Berhasil Ditambah dengan Gambar
+
+```
+<img width="1366" height="768" alt="image" src="https://github.com/user-attachments/assets/910e5fd9-43a3-4cc0-8c74-2be266203eb1" />
+
+hanya contoh gambar saja yang saya masukan
+
+```
+
+---
+
+# Kesimpulan
+
+Pada Praktikum 7 ini berhasil diimplementasikan fitur **upload file gambar** pada aplikasi CodeIgniter 4. Penggunaan method `getFile()`, `getRandomName()`, dan `move()` dari library bawaan CI4 mempermudah proses penanganan file di sisi server. Validasi file dilakukan langsung melalui `setRules()` sehingga keamanan dan konsistensi data tetap terjaga. Selain itu, diterapkan juga mekanisme **auto-delete** file lama saat gambar diganti atau artikel dihapus, untuk menjaga kebersihan direktori penyimpanan.

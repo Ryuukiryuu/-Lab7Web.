@@ -1432,11 +1432,3 @@ Setelah semua langkah selesai, sistem berhasil menampilkan:
 ```
 
 ---
-
-# Kesimpulan
-
-Pada Praktikum 6 ini berhasil diterapkan konsep **relasi tabel One-to-Many** antara tabel `artikel` dan `kategori`. Selain itu, penggunaan **Query Builder CodeIgniter 4** mempermudah proses JOIN, pencarian data, filter kategori, dan pagination sehingga aplikasi menjadi lebih terstruktur dan dinamis.
-
----
-
-

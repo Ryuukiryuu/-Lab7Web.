@@ -1687,7 +1687,3 @@ hanya contoh gambar saja yang saya masukan
 ```
 
 ---
-
-# Kesimpulan
-
-Pada Praktikum 7 ini berhasil diimplementasikan fitur **upload file gambar** pada aplikasi CodeIgniter 4. Penggunaan method `getFile()`, `getRandomName()`, dan `move()` dari library bawaan CI4 mempermudah proses penanganan file di sisi server. Validasi file dilakukan langsung melalui `setRules()` sehingga keamanan dan konsistensi data tetap terjaga. Selain itu, diterapkan juga mekanisme **auto-delete** file lama saat gambar diganti atau artikel dihapus, untuk menjaga kebersihan direktori penyimpanan.

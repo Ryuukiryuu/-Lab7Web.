@@ -1682,6 +1682,170 @@ Setelah semua langkah selesai, sistem berhasil menampilkan:
 ```
 <img width="1366" height="768" alt="image" src="https://github.com/user-attachments/assets/910e5fd9-43a3-4cc0-8c74-2be266203eb1" />
 
-hanya contoh gambar saja yang saya masukan
+---
+
+Oke bro, ini khusus bagian Praktikum 8 aja — tinggal append ke README yang udah ada.
+
+---
+
+## Tambahan di `README.md` — Praktikum 8
+
+````markdown
+---
+
+## Praktikum 8 — AJAX dengan CodeIgniter 4
+
+### Tujuan
+1. Memahami konsep AJAX dan cara kerjanya.
+2. Mampu mengimplementasikan AJAX pada aplikasi web dengan CodeIgniter 4.
+3. Melatih kemampuan problem solving dan debugging.
+
+### Apa itu AJAX?
+
+AJAX (*Asynchronous JavaScript and XML*) adalah kumpulan teknik pengembangan web yang memungkinkan aplikasi web berkomunikasi dengan server secara asynchronous — tanpa harus melakukan reload halaman secara keseluruhan.
+
+Meskipun namanya menyebut XML, pada praktiknya format data yang digunakan umumnya adalah **JSON**.
+
+### Cara Kerja AJAX
 
 ```
+[User Action] → [JS buat HTTP Request] → [Server proses] → [Server kirim JSON] → [JS update DOM]
+```
+
+1. **Event Trigger** — pengguna melakukan aksi (klik tombol, ketik di form, dll.)
+2. **Request Dikirim** — JavaScript membuat HTTP request (GET/POST/DELETE) ke server
+3. **Server Memproses** — server mengambil/memanipulasi data dari database
+4. **Respons Dikembalikan** — server mengembalikan data dalam format JSON
+5. **DOM Diperbarui** — JavaScript memperbarui bagian halaman tanpa reload penuh
+
+### Keuntungan AJAX
+
+- **UX lebih baik** — halaman tidak reload penuh setiap ada interaksi
+- **Hemat bandwidth** — hanya data yang dibutuhkan yang dikirim
+- **State terjaga** — kondisi halaman tidak hilang saat data diperbarui
+
+---
+
+### Langkah-langkah Implementasi
+
+#### 1. Membuat AjaxController
+
+Buat file `app/Controllers/AjaxController.php` yang menangani 5 endpoint:
+
+| Method | URL | Fungsi |
+|---|---|---|
+| GET | `/ajax/getData` | Ambil semua artikel (JSON) |
+| GET | `/ajax/getById/{id}` | Ambil satu artikel by ID (untuk modal edit) |
+| POST | `/ajax/store` | Tambah artikel baru |
+| POST | `/ajax/update/{id}` | Update artikel |
+| DELETE | `/ajax/destroy/{id}` | Hapus artikel |
+
+Semua endpoint mengembalikan response dalam format JSON menggunakan `$this->response->setJSON()`.
+
+#### 2. Menambahkan Route AJAX
+
+Tambahkan route group baru di `app/Config/Routes.php`:
+
+```php
+$routes->group('ajax', ['filter' => 'auth'], function ($routes) {
+    $routes->get('/', 'AjaxController::index');
+    $routes->get('getData', 'AjaxController::getData');
+    $routes->get('getById/(:num)', 'AjaxController::getById/$1');
+    $routes->post('store', 'AjaxController::store');
+    $routes->post('update/(:num)', 'AjaxController::update/$1');
+    $routes->delete('destroy/(:num)', 'AjaxController::destroy/$1');
+});
+```
+
+Route group ini dilindungi filter `auth` sehingga hanya admin yang login yang bisa mengaksesnya.
+
+
+#### 3. Membuat View AJAX
+
+Buat folder `app/Views/ajax/` lalu buat file `index.php` di dalamnya.
+
+View ini menggunakan **native Fetch API** (tanpa jQuery) dan memiliki fitur:
+
+**a. Load Data Otomatis**
+
+Saat halaman dibuka, fungsi `loadData()` langsung dipanggil untuk mengambil data dari endpoint `/ajax/getData` dan me-render tabel secara dinamis.
+
+```javascript
+function loadData() {
+    fetch(BASE + 'ajax/getData')
+        .then(r => r.json())
+        .then(data => {
+            // render baris tabel dari data JSON
+        });
+}
+```
+
+**b. Tambah Artikel via Modal**
+
+Klik tombol "Tambah Artikel" → muncul modal form. Data dikirim via `fetch()` ke endpoint `/ajax/store` menggunakan method POST.
+
+```javascript
+fetch(BASE + 'ajax/store', {
+    method: 'POST',
+    body: new URLSearchParams({ judul, isi })
+})
+.then(r => r.json())
+.then(res => {
+    if (res.status === 'OK') {
+        closeModal();
+        loadData(); // refresh tabel tanpa reload halaman
+        showToast(res.message, 'success');
+    }
+});
+```
+
+**c. Edit Artikel via Modal**
+
+Klik tombol Edit → fetch data artikel by ID via `/ajax/getById/{id}` → populate modal form → submit ke `/ajax/update/{id}`.
+
+**d. Hapus Artikel dengan Konfirmasi**
+
+Klik tombol hapus → muncul modal konfirmasi → jika dikonfirmasi, kirim DELETE request ke `/ajax/destroy/{id}` → tabel otomatis di-refresh.
+
+```javascript
+fetch(BASE + 'ajax/destroy/' + id, { method: 'DELETE' })
+    .then(r => r.json())
+    .then(res => {
+        loadData();
+        showToast(res.message, 'success');
+    });
+```
+
+**e. Toast Notification**
+
+---
+
+Setiap operasi berhasil/gagal menampilkan notifikasi toast di pojok kanan bawah secara otomatis.
+---
+
+### Perbedaan Pendekatan: AJAX vs Full Page Reload
+
+| Aspek | Full Page Reload | AJAX |
+|---|---|---|
+| Reload halaman | ✅ Ya, setiap aksi | ❌ Tidak perlu |
+| Kecepatan | Lebih lambat | Lebih cepat |
+| Bandwidth | Kirim seluruh halaman | Kirim data saja (JSON) |
+| UX | Terasa patah-patah | Smooth & responsif |
+| Kompleksitas kode | Lebih sederhana | Sedikit lebih kompleks |
+
+### Kesimpulan
+
+Pada praktikum ini berhasil diimplementasikan fitur CRUD artikel menggunakan AJAX dengan CodeIgniter 4 tanpa library tambahan (pure Fetch API). Setiap operasi — tambah, edit, hapus, dan load data — dilakukan secara asynchronous sehingga halaman tidak perlu di-reload, menghasilkan pengalaman pengguna yang lebih responsif dan modern.
+````
+
+---
+
+<img width="1366" height="768" alt="image" src="https://github.com/user-attachments/assets/6e43fe22-a22f-41c8-b111-678acb1c467b" />
+
+<img width="1366" height="768" alt="image" src="https://github.com/user-attachments/assets/29be0cd1-1ce7-40a7-a0db-fbce3671e63d" />
+
+<img width="1366" height="768" alt="image" src="https://github.com/user-attachments/assets/106c0435-8930-4250-9303-e5b5f37632b6" />
+
+<img width="1366" height="768" alt="image" src="https://github.com/user-attachments/assets/b9df41e2-1df3-46b1-a8ba-3004a75bce3b" />
+
+<img width="1366" height="768" alt="image" src="https://github.com/user-attachments/assets/ab2b25f0-3ce0-42f9-94fc-951792f3c15b" />
